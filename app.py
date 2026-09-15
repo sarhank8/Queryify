@@ -180,16 +180,20 @@ Sample Rows:
 - Target Columns: Select only the required columns or appropriate aggregations matching the question.
 - Granularity: Ensure output rows match the required aggregation level (e.g. 1 row per group/category).
 
-### 4. Technical Constraints
+### 4. CRITICAL CONSTRAINT: OUT-OF-CONTEXT QUESTIONS ARE STRICTLY NOT ALLOWED
+- You are ONLY permitted to answer questions that directly query table `{table_name}` and its existing columns: {', '.join(df.columns)}.
+- If the user question asks about ANY external topic (general knowledge, current events, programming, recipes, weather, personal advice) OR refers to non-existent columns/entities, you MUST REFUSE and reply ONLY with:
+  OUT_OF_CONTEXT: <brief reason explaining why this question is outside the dataset scope>
+- Do NOT answer or attempt to generate SQL for out-of-context queries.
+
+### 5. Technical Constraints
 - Step-by-step logic: Structure complex logic using readable Common Table Expressions (WITH clauses / CTEs) rather than deeply nested subqueries.
 - Safe Math: Use NULLIF or CASE statements to prevent division-by-zero errors on calculated ratios/percentages.
 - Filter Discipline: Base filters strictly on the column values and formats demonstrated in the sample data (e.g., casing, exact string matching).
 - Window Functions: Keep window functions (RANK, DENSE_RANK, ROW_NUMBER, LAG/LEAD) isolated in CTEs if they need to be filtered by WHERE clauses.
-- Out-of-Context Rule: If the user question is unrelated to the dataset, asks general knowledge, or references nonexistent columns/entities, reply strictly with:
-  OUT_OF_CONTEXT: <brief explanation>
 
-### 5. Execution & Output Format
-- Return ONLY the raw executable SQL query without markdown code blocks, backticks (no ``` or ```sql), or explanations.
+### 6. Execution & Output Format
+- Return ONLY the raw executable SQLite SQL query without markdown code blocks, backticks (no ``` or ```sql), or explanations (unless OUT_OF_CONTEXT).
 """
     return prompt
 
