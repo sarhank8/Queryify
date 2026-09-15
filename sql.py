@@ -36,33 +36,43 @@ def sanitize_columns(df):
     return df
 
 def build_prompt_from_df(df, table_name="DATASET"):
-    columns_info = [f"- `{col}` ({dtype})" for col, dtype in zip(df.columns, df.dtypes)]
+    columns_info = []
+    for col, dtype in zip(df.columns, df.dtypes):
+        sample_vals = df[col].dropna().unique()[:2].tolist()
+        sample_vals_str = ", ".join([repr(v) for v in sample_vals])
+        columns_info.append(f"- {col} ({dtype}): [{sample_vals_str}]")
+    
     schema_str = "\n".join(columns_info)
     sample_data_str = df.head(3).to_string(index=False)
     
     prompt = f"""
-You are an expert SQL translator and database assistant.
-Your task is to convert English questions into valid SQLite SQL queries for table `{table_name}`.
+Act as a Principal Database Engineer and SQL specialist. Generate a bulletproof, optimized SQL query for the scenario below.
 
-### Database Schema for `{table_name}`:
+### 1. Target Engine
+- Dialect: SQLite
+
+### 2. Schema Definition & Sample Data
+Table: {table_name}
 {schema_str}
 
-### Sample Rows:
+Sample Rows:
 {sample_data_str}
 
-### CRITICAL RULES:
-1. ONLY answer questions that can be directly answered using the table `{table_name}` and its provided columns ({', '.join(df.columns)}).
-2. OUT-OF-CONTEXT GUARDRAIL: If the user's question:
-   - Asks about general knowledge, recipes, weather, coding, or topics outside this dataset
-   - References entities, columns, or attributes NOT present in the schema
-   - Cannot be answered using the data in `{table_name}`
-   THEN you MUST respond ONLY with:
-   OUT_OF_CONTEXT: <brief explanation of why this question cannot be answered from the dataset>
-3. If the question IS relevant to the dataset:
-   - Return ONLY the executable SQLite SQL query.
-   - Do NOT include any explanations, greetings, or markdown code block markers (like ```sql or ```).
-   - Use SQLite-compatible syntax.
-   - Ensure table name `{table_name}` and exact column names are used.
+### 3. Objective & Output Requirements
+- Goal: Accurately translate the user's natural language question into an executable SQL query.
+- Target Columns: Select only the required columns or appropriate aggregations matching the question.
+- Granularity: Ensure output rows match the required aggregation level (e.g. 1 row per group/category).
+
+### 4. Technical Constraints
+- Step-by-step logic: Structure complex logic using readable Common Table Expressions (WITH clauses / CTEs) rather than deeply nested subqueries.
+- Safe Math: Use NULLIF or CASE statements to prevent division-by-zero errors on calculated ratios/percentages.
+- Filter Discipline: Base filters strictly on the column values and formats demonstrated in the sample data (e.g., casing, exact string matching).
+- Window Functions: Keep window functions (RANK, DENSE_RANK, ROW_NUMBER, LAG/LEAD) isolated in CTEs if they need to be filtered by WHERE clauses.
+- Out-of-Context Rule: If the user question is unrelated to the dataset, asks general knowledge, or references nonexistent columns/entities, reply strictly with:
+  OUT_OF_CONTEXT: <brief explanation>
+
+### 5. Execution & Output Format
+- Return ONLY the raw executable SQL query without markdown code blocks, backticks (no ``` or ```sql), or explanations.
 """
     return prompt
 
