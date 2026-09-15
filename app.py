@@ -157,7 +157,7 @@ def build_prompt_from_df(df, table_name="DATASET"):
     for col, dtype in zip(df.columns, df.dtypes):
         sample_vals = df[col].dropna().unique()[:2].tolist()
         sample_vals_str = ", ".join([repr(v) for v in sample_vals])
-        columns_info.append(f"- {col} ({dtype}): [{sample_vals_str}]")
+        columns_info.append(f'- "{col}" ({dtype}): [{sample_vals_str}]')
     
     schema_str = "\n".join(columns_info)
     sample_data_str = df.head(3).to_string(index=False)
@@ -169,7 +169,7 @@ Act as a Principal Database Engineer and SQL specialist. Generate a bulletproof,
 - Dialect: SQLite
 
 ### 2. Schema Definition & Sample Data
-Table: {table_name}
+Table: "{table_name}"
 {schema_str}
 
 Sample Rows:
@@ -181,15 +181,16 @@ Sample Rows:
 - Granularity: Ensure output rows match the required aggregation level (e.g. 1 row per group/category).
 
 ### 4. CRITICAL CONSTRAINT: OUT-OF-CONTEXT QUESTIONS ARE STRICTLY NOT ALLOWED
-- You are ONLY permitted to answer questions that directly query table `{table_name}` and its existing columns: {', '.join(df.columns)}.
+- You are ONLY permitted to answer questions that directly query table "{table_name}" and its existing columns: {', '.join([f'"{c}"' for c in df.columns])}.
 - If the user question asks about ANY external topic (general knowledge, current events, programming, recipes, weather, personal advice) OR refers to non-existent columns/entities, you MUST REFUSE and reply ONLY with:
   OUT_OF_CONTEXT: <brief reason explaining why this question is outside the dataset scope>
 - Do NOT answer or attempt to generate SQL for out-of-context queries.
 
-### 5. Technical Constraints
+### 5. Technical Constraints & Reserved Keyword Protection
+- Reserved Keyword & Identifier Quoting: ALWAYS enclose all column names and table names in double quotes (e.g. "{table_name}"."Group", "Level_1", "Period", "Values", "Order") to completely prevent SQLite syntax errors with reserved keywords.
 - Step-by-step logic: Structure complex logic using readable Common Table Expressions (WITH clauses / CTEs) rather than deeply nested subqueries.
-- Safe Math: Use NULLIF or CASE statements to prevent division-by-zero errors on calculated ratios/percentages.
-- Filter Discipline: Base filters strictly on the column values and formats demonstrated in the sample data (e.g., casing, exact string matching).
+- Safe Math: Use NULLIF or CASE statements to prevent division-by-zero errors on calculated ratios/percentages (e.g. `ROUND(100.0 * total_profit / NULLIF(total_sales, 0), 2)`).
+- Filter Discipline: Base filters strictly on the column values and formats demonstrated in the sample data (e.g., casing, exact string matching, numeric vs text format).
 - Window Functions: Keep window functions (RANK, DENSE_RANK, ROW_NUMBER, LAG/LEAD) isolated in CTEs if they need to be filtered by WHERE clauses.
 
 ### 6. Execution & Output Format
